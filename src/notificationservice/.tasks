@@ -1,0 +1,10 @@
+# Default Tasks for this service
+
+# check_opening_movies
+task
+service=Notification
+name=Check Opening Movies
+description=Checks which movies are opening
+cron=0 0 13 * * 4
+type=check_opening_movies
+enabled=true

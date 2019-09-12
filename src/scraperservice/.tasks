@@ -1,0 +1,11 @@
+# Default Tasks for this service.
+
+# start_scraper
+task
+service=Scraper
+name=Start Scraper
+description=Run the desired scraper for the given type
+cron=0 0 7 * * *,0 30 12 * * *
+type=start_scraper
+args=-type,now_playing
+enabled=true

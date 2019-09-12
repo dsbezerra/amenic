@@ -1,0 +1,83 @@
+version: '3'
+networks:
+  amenic:
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.6-management
+    ports:
+      - "15672:15672"
+    networks:
+      - amenic
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.apiservice
+    ports:
+      - "8000:8000"
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    networks:
+      - amenic
+
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.adminservice
+    ports:
+      - "8181:8181"
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    networks:
+      - amenic
+
+  notifications:
+    build:
+      context: .
+      dockerfile: Dockerfile.notificationservice
+    ports:
+      - "8282:8282"
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    networks:
+      - amenic
+
+  scores:
+    build:
+      context: .
+      dockerfile: Dockerfile.scoreservice
+    ports:
+      - "8383:8383"
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    networks:
+      - amenic
+
+  scrapers:
+    build:
+      context: .
+      dockerfile: Dockerfile.scraperservice
+    ports:
+      - "8484:8484"
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    networks:
+      - amenic
+
+  images:
+    build:
+      context: .
+      dockerfile: Dockerfile.imageservice
+    ports:
+      - "8686:8686"
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    networks:
+      - amenic

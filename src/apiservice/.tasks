@@ -1,0 +1,12 @@
+# Default Tasks that this service will execute
+
+# create_static
+task
+service=API
+name=Create Static (Home)
+description=Create static home.json
+cron=@daily
+type=create_static
+args=-type,home
+enabled=true
+run_at_start=true

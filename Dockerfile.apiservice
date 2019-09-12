@@ -1,0 +1,38 @@
+# Telling to use Docker's golang ready image
+FROM golang
+
+# Name and Email of the author
+MAINTAINER Diego Bezerra <diegobezerra.dev@gmail.com>
+
+# Builds binary
+WORKDIR /go/src/github.com/dsbezerra/amenic
+COPY . .
+WORKDIR src/apiservice
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o apiservice
+
+# to use Location we need to have tz database
+# https://github.com/robfig/cron/issues/132#issuecomment-363924940
+FROM alpine:latest as alpine
+RUN apk --no-cache add tzdata zip ca-certificates
+WORKDIR /usr/share/zoneinfo
+# -0 means no compression.  Needed because go's
+# tz loader doesn't handle compressed data.
+RUN zip -r -0 /zoneinfo.zip .
+
+FROM scratch
+
+ENV ZONEINFO /zoneinfo.zip
+COPY --from=alpine /zoneinfo.zip /
+COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Copy binary and .env to container
+COPY --from=0 /go/src/github.com/dsbezerra/amenic/src/apiservice/apiservice /apiservice
+COPY --from=0 /go/src/github.com/dsbezerra/amenic/src/apiservice/static /static
+COPY --from=0 /go/src/github.com/dsbezerra/amenic/src/apiservice/.env /.env
+COPY --from=0 /go/src/github.com/dsbezerra/amenic/src/apiservice/.tasks /.tasks
+
+# Expose port 8000
+EXPOSE 8000
+
+# Run service
+CMD ["/apiservice"]

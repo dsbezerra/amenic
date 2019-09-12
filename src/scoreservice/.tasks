@@ -1,0 +1,10 @@
+# Default tasks for this service
+
+# sync_scores
+task
+service=Score
+name=Sync Scores
+description=Sync movie scores
+cron=@every 12h
+type=sync_scores
+enabled=true
