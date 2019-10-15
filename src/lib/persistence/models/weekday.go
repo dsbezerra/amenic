@@ -83,3 +83,26 @@ func NameToTimeWeekday(name string) time.Weekday {
 
 	return -1
 }
+
+// TimeWeekdayToWeekday ...
+func TimeWeekdayToWeekday(w time.Weekday) Weekday {
+
+	switch w {
+	case time.Sunday:
+		return SUNDAY
+	case time.Monday:
+		return MONDAY
+	case time.Tuesday:
+		return TUESDAY
+	case time.Wednesday:
+		return WEDNESDAY
+	case time.Thursday:
+		return THURSDAY
+	case time.Friday:
+		return FRIDAY
+	case time.Saturday:
+		return SATURDAY
+	}
+
+	return INVALID
+}

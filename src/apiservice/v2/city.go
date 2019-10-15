@@ -18,9 +18,9 @@ type CityService struct {
 func (r *RESTService) ServeCities(rg *gin.RouterGroup) {
 	s := &CityService{r.data, r.emitter}
 
-	client := rg.Group("/cities", rest.AdminAuth(r.data))
-	client.GET("/", s.GetAll)
-	client.GET("/city/:id", s.Get)
+	cities := rg.Group("/cities", rest.JWTAuth(&rest.Endpoint{AdminOnly: true}))
+	cities.GET("/", s.GetAll)
+	cities.GET("/city/:id", s.Get)
 }
 
 // Get gets the city corresponding the requested ID.

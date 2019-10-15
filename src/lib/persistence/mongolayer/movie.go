@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/dsbezerra/amenic/src/lib/persistence"
 	"github.com/dsbezerra/amenic/src/lib/persistence/models"
 	"github.com/dsbezerra/amenic/src/lib/util/scheduleutil"
@@ -27,10 +29,28 @@ func (m *MongoDAL) InsertMovie(movie models.Movie) error {
 // FindMovie ...
 func (m *MongoDAL) FindMovie(query persistence.Query) (*models.Movie, error) {
 	var result models.Movie
-	err := m.C(CollectionMovies).FindOne(context.Background(), query.GetConditions(), getFindOneOptions(query)).Decode(&result)
+
+	var ctx = context.Background()
+	var cursor *mongo.Cursor
+	var err error
+
+	var C = m.C(CollectionMovies)
+	if query.HasInclude() {
+		cursor, err = C.Aggregate(ctx, buildPipeline(CollectionMovies, query.(*QueryOptions)))
+		if cursor != nil {
+			defer cursor.Close(ctx)
+			if cursor.Next(ctx) {
+				err = cursor.Decode(&result)
+			}
+		}
+	} else {
+		err = C.FindOne(ctx, query.GetConditions(), getFindOneOptions(query)).Decode(&result)
+	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &result, err
 }
 
@@ -107,9 +127,7 @@ func (m *MongoDAL) GetNowPlayingMovies(query persistence.Query) ([]models.Movie,
 	// now playing movies
 	if len(and) == 0 {
 		period := scheduleutil.GetWeekPeriod(nil)
-		and = append(and, bson.M{"startTime": bson.M{
-			"$gte": period.Start,
-		}})
+		and = append(and, bson.M{"startTime": bson.M{"$gte": period.Start}})
 	}
 
 	// Pipeline begin by finding all sessions, matching the given conditions, and grouping them by
@@ -133,13 +151,9 @@ func (m *MongoDAL) GetNowPlayingMovies(query persistence.Query) ([]models.Movie,
 				"as":           "movie",
 			},
 		},
-	}
-
-	// Builds the $project stage using the specified/default fields
-	project := bson.M{}
-	for f := range opts.Fields {
-		field := fmt.Sprintf("movie.%s", f)
-		project[field] = 1
+		{
+			"$unwind": "$movie",
+		},
 	}
 
 	// Builds the $sort stage which sorts everything by release date in
@@ -150,27 +164,35 @@ func (m *MongoDAL) GetNowPlayingMovies(query persistence.Query) ([]models.Movie,
 		opts.Sort = []string{"-movie.releaseDate"}
 		opts.Sort = append(opts.Sort, rest...)
 		sort = SortToBSON("movie", opts.Sort...)
+		if len(sort) > 0 {
+			p = append(p, bson.M{"$sort": sort})
+		}
 	}
+
 	// Now we add the final stages, which are:
-	finalStages := []bson.M{
-		{
-			"$unwind": "$movie", //  is used to remove the movie from the returned array
-		},
-		{
-			"$sort": sort, // applies our desired sort to all movie documents
-		},
+	project := bson.M{}
+
+	if len(opts.Fields) == 0 {
+		opts.Fields = primitive.M{
+			"_id":         1,
+			"poster":      1,
+			"title":       1,
+			"trailer":     1,
+			"rating":      1,
+			"releaseDate": 1,
+		}
 	}
-	p = append(p, finalStages...)
-	if len(project) > 0 {
-		p = append(p, bson.M{
-			"$project": project, // project our desired fields to the final result
-		})
+
+	for f := range opts.Fields {
+		field := fmt.Sprintf("movie.%s", f)
+		project[field] = 1
 	}
-	p = append(p, bson.M{
-		"$replaceRoot": bson.M{ // will make sure ou movie documents are in the root
-			"newRoot": "$movie",
-		},
-	})
+
+	// project our desired fields to the final result
+	p = append(p, bson.M{"$project": project})
+
+	// will make sure ou movie documents are in the root
+	p = append(p, bson.M{"$replaceRoot": bson.M{"newRoot": "$movie"}})
 
 	var ctx = context.Background()
 	cursor, err := m.C(CollectionSessions).Aggregate(ctx, p)
@@ -186,39 +208,18 @@ func (m *MongoDAL) GetNowPlayingMovies(query persistence.Query) ([]models.Movie,
 // **************   FOR STATIC home.json AND now_playing.json FILES   ****************
 func (m *MongoDAL) OldGetNowPlayingMovies(query persistence.Query) ([]models.Movie, error) {
 	var result []models.Movie
-	var opts *QueryOptions
-	if query == nil {
-		opts = &QueryOptions{}
-	} else {
-		opts = query.(*QueryOptions)
-	}
 
-	and := []bson.M{}
-	for name, value := range opts.Conditions {
-		and = append(and, bson.M{name: value})
-	}
+	period := scheduleutil.GetWeekPeriod(nil)
 
-	if len(and) == 0 {
-		period := scheduleutil.GetWeekPeriod(nil)
-		and = append(and, bson.M{"startTime": bson.M{
-			"$gte": period.Start,
-		}})
-	}
-
-	p := []bson.M{
+	pipe := []bson.M{
 		{
-			"$match": bson.M{
-				"$and": and,
-			},
+			"$match": bson.M{"startTime": bson.M{"$gte": period.Start}},
 		},
 		{
 			"$group": bson.M{
 				"_id": "$movieId",
 				"theaters": bson.M{
 					"$addToSet": "$theaterId",
-				},
-				"sessions": bson.M{
-					"$push": "$$ROOT",
 				},
 			},
 		},
@@ -230,87 +231,40 @@ func (m *MongoDAL) OldGetNowPlayingMovies(query persistence.Query) ([]models.Mov
 				"as":           "movie",
 			},
 		},
-	}
-
-	for _, include := range opts.Includes {
-		included := false
-		if include.Field == "theaters" {
-			p = append(p, []bson.M{
-				{
-					"$lookup": bson.M{
-						"from":         CollectionTheaters,
-						"localField":   "theaters",
-						"foreignField": "_id",
-						"as":           "theaters",
-					},
-				},
-				{
-					"$addFields": bson.M{
-						"movie.theaters": "$theaters",
-					},
-				},
-			}...)
-
-			included = true
-
-		} else if include.Field == "sessions" {
-			p = append(p, bson.M{
-				"$addFields": bson.M{
-					"movie.sessions": "$sessions",
-				},
-			})
-
-			included = true
-		}
-
-		if included {
-			if len(include.Fields) > 0 {
-				for _, name := range include.Fields {
-					field := fmt.Sprintf("%s.%s", include.Field, name)
-					opts.Fields[field] = 1
-				}
-			} else {
-				opts.Fields[include.Field] = 1
-			}
-		}
-	}
-
-	project := bson.M{}
-	for f := range opts.Fields {
-		field := fmt.Sprintf("movie.%s", f)
-		project[field] = 1
-	}
-
-	sort := bson.D{}
-	if opts.sorting {
-		rest := opts.Sort[0:]
-		opts.Sort = []string{"-movie.releaseDate"}
-		opts.Sort = append(opts.Sort, rest...)
-		sort = SortToBSON("movie", opts.Sort...)
-	}
-
-	finalStages := []bson.M{
+		{
+			"$lookup": bson.M{
+				"from":         CollectionTheaters,
+				"localField":   "theaters",
+				"foreignField": "_id",
+				"as":           "theaters",
+			},
+		},
 		{
 			"$unwind": "$movie", //  is used to remove the movie from the returned array
 		},
 		{
-			"$sort": sort, // applies our desired sort to all movie documents
+			"$addFields": bson.M{
+				"movie.theaters": "$theaters",
+			},
+		},
+		{
+			"$project": bson.M{
+				"movie._id":         1,
+				"movie.title":       1,
+				"movie.poster":      1,
+				"movie.releaseDate": 1,
+				"movie.theaters":    1,
+			},
+		},
+		{
+			"$replaceRoot": bson.M{
+				"newRoot": "$movie",
+			},
 		},
 	}
-	p = append(p, finalStages...)
-	if len(project) > 0 {
-		p = append(p, bson.M{
-			"$project": project, // project our desired fields to the final result
-		})
-	}
-	p = append(p, bson.M{
-		"$replaceRoot": bson.M{ // will make sure ou movie documents are in the root
-			"newRoot": "$movie",
-		},
-	})
 
 	var ctx = context.Background()
-	cursor, err := m.C(CollectionSessions).Aggregate(ctx, p)
+	cursor, err := m.C(CollectionSessions).Aggregate(ctx, pipe)
 	if err != nil {
 		return nil, err
 	}
@@ -331,6 +285,16 @@ func (m *MongoDAL) GetUpcomingMovies(query persistence.Query) ([]models.Movie, e
 	// Set default sort if we don't specify one
 	if !opts.sorting {
 		opts.Sort = []string{"+releaseDate"}
+	}
+	if len(opts.Fields) == 0 {
+		opts.Fields = primitive.M{
+			"_id":         1,
+			"poster":      1,
+			"title":       1,
+			"trailer":     1,
+			"rating":      1,
+			"releaseDate": 1,
+		}
 	}
 	return m.GetMovies(opts)
 }

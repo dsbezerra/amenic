@@ -1,16 +1,29 @@
 package apiutil
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+// ErrInvalidCredentials ...
+var ErrInvalidCredentials = errors.New("invalid credentials")
 
 // APIResponse TODO
 type APIResponse struct {
 	Status int         `json:"status"`
 	Data   interface{} `json:"data,omitempty"`
 	Error  *APIError   `json:"error,omitempty"`
+}
+
+// SendInternalServerError is a helper for sending internal_server_error error responses.
+func SendInternalServerError(c *gin.Context) {
+	c.SecureJSON(http.StatusInternalServerError, &APIResponse{
+		Status: http.StatusNotFound,
+		Error:  apiErrorNotFound,
+	})
+	c.Abort()
 }
 
 // SendSuccess is a helper for sending success responses.
@@ -25,6 +38,7 @@ func SendBadRequest(c *gin.Context) {
 		Status: http.StatusBadRequest,
 		Error:  apiErrorBadRequest,
 	})
+	c.Abort()
 }
 
 // SendUnauthorized is a helper for sending unauthorized error response.
@@ -33,6 +47,7 @@ func SendUnauthorized(c *gin.Context) {
 		Status: http.StatusUnauthorized,
 		Error:  apiErrorUnauthorized,
 	})
+	c.Abort()
 }
 
 // SendSuccessOrError is a shortcut function for sending success/error responses.
@@ -50,6 +65,7 @@ func SendNotFound(c *gin.Context) {
 		Status: http.StatusNotFound,
 		Error:  apiErrorNotFound,
 	})
+	c.Abort()
 }
 
 // SendProtectedResource is a helper for sending protected resource error response.
@@ -58,4 +74,5 @@ func SendProtectedResource(c *gin.Context) {
 		Status: http.StatusUnauthorized,
 		Error:  apiErrorProtectedResource,
 	})
+	c.Abort()
 }

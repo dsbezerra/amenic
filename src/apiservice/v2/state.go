@@ -25,10 +25,10 @@ type StateService struct {
 func (r *RESTService) ServeStates(rg *gin.RouterGroup) {
 	s := &StateService{r.data, r.emitter}
 
-	client := rg.Group("/states", rest.AdminAuth(r.data))
-	client.GET("/", s.GetAll)
-	client.GET("/state/:id", s.Get)
-	client.GET("/state/:id/cities", s.GetCities)
+	states := rg.Group("/states", rest.JWTAuth(&rest.Endpoint{AdminOnly: true}))
+	states.GET("/", s.GetAll)
+	states.GET("/state/:id", s.Get)
+	states.GET("/state/:id/cities", s.GetCities)
 	// TODO: Get theaters
 }
 

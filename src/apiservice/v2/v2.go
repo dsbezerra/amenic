@@ -20,7 +20,14 @@ func AddRoutes(r *gin.Engine, data persistence.DataAccessLayer, emitter messageq
 	r.Use(middlewares.BaseParseQuery())
 	v2 := r.Group("v2")
 	s := RESTService{data, emitter}
+
+	s.ServeAuth(v2)
 	s.ServeSchedules(v2)
 	s.ServeCities(v2)
 	s.ServeStates(v2)
+	s.ServeTheaters(v2)
+	s.ServeScores(v2)
+	s.ServePrices(v2)
+	s.ServeMovies(v2)
+	s.ServeNotifications(v2)
 }

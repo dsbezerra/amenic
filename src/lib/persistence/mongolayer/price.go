@@ -82,3 +82,11 @@ func (m *MongoDAL) DeletePrices(query persistence.Query) (int64, error) {
 	}
 	return result.DeletedCount, err
 }
+
+// BuildPriceQuery converts a map of query string to mongolayer syntax for Price model
+func (m *MongoDAL) BuildPriceQuery(q map[string]string) persistence.Query {
+	query := BuildQuery("", q)
+	if len(q) > 0 {
+	}
+	return query
+}

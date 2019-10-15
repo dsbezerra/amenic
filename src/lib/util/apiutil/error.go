@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"strconv"
 
+	jwt_lib "github.com/dgrijalva/jwt-go/request"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // APIError ...
@@ -15,11 +17,13 @@ type APIError struct {
 }
 
 var (
-	apiErrorNotFound          = NewAPIError("not_found", "Resource not found")
-	apiErrorBadRequest        = NewAPIError("bad_request", "Request cannot be fulfilled due to bad syntax")
-	apiErrorUnknown           = NewAPIError("unknown", "Unknown error occurred")
-	apiErrorUnauthorized      = NewAPIError("unauthorized", "This action requires authentication")
-	apiErrorProtectedResource = NewAPIError("protected", "This resource is protected and cannot be deleted or modified")
+	apiErrorUnknown            = NewAPIError("unknown", "Unknown error occurred")
+	apiErrorNotFound           = NewAPIError("not_found", "Resource not found")
+	apiErrorBadRequest         = NewAPIError("bad_request", "Request cannot be fulfilled due to bad syntax")
+	apiErrorUnauthorized       = NewAPIError("unauthorized", "This action requires authentication")
+	apiInternalServerError     = NewAPIError("internal_server_error", "An internal server error occurred")
+	apiErrorProtectedResource  = NewAPIError("protected", "This resource is protected and cannot be deleted or modified")
+	apiErrorInvalidCredentials = NewAPIError("invalid_credentials", "Invalid credentials")
 )
 
 // HandleError main handler for errors in the API.
@@ -33,12 +37,19 @@ func HandleError(c *gin.Context, err error) {
 	case err.(*strconv.NumError):
 		res.Status = http.StatusBadRequest
 		res.Error = apiErrorBadRequest
+	case jwt_lib.ErrNoTokenInRequest:
+		res.Status = http.StatusUnauthorized
+		res.Error = apiErrorUnauthorized
+	case ErrInvalidCredentials, bcrypt.ErrMismatchedHashAndPassword:
+		res.Status = http.StatusUnauthorized
+		res.Error = apiErrorInvalidCredentials
 	default:
 		res.Status = 500
 		res.Error = NewAPIError("unknown", err.Error()) // @Temporary
 	}
 
 	c.SecureJSON(res.Status, res)
+	c.Abort()
 }
 
 // NewAPIError create and allocates new APIError error instance.

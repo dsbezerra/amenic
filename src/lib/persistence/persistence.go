@@ -13,10 +13,33 @@ type DataAccessLayer interface {
 
 	BuildCityQuery(q map[string]string) Query
 	BuildMovieQuery(q map[string]string) Query
+	BuildPriceQuery(q map[string]string) Query
 	BuildSessionQuery(q map[string]string) Query
 	BuildTheaterQuery(q map[string]string) Query
 	BuildScraperQuery(q map[string]string) Query
 	BuildImageQuery(q map[string]string) Query
+
+	// ------ Admin ------
+	// InsertAdmin inserts a single Admin resource
+	// @param apikey{models.Admin} - An Admin reource to be inserted
+	InsertAdmin(apikey models.Admin) error
+
+	// FindAdmin retrieves a Admin resource matching the given Query
+	// @param	query{Query}  - Options used to retrieve data
+	FindAdmin(query Query) (*models.Admin, error)
+
+	// GetAdmin retrieves a Admin resource by ID
+	// @param	id{string} 		- Admin identifier
+	// @param	query{Query}  - Options used to retrieve data
+	GetAdmin(id string, query Query) (*models.Admin, error)
+
+	// GetAdmins retrieves all Admin resources matching the given Query
+	// @param	query{Query} - Options used to retrieve data
+	GetAdmins(query Query) ([]models.Admin, error)
+
+	// DeleteAdmin removes a single Admin matching the given id
+	// @param	id{string} 		- Admin identifier
+	DeleteAdmin(id string) error
 
 	// ------ APIKey ------
 	// InsertAPIKey inserts a single APIKey resource

@@ -1,3 +1,5 @@
+/** DEPRECATED */
+
 package v1
 
 import (
@@ -7,6 +9,9 @@ import (
 	"github.com/dsbezerra/amenic/src/lib/util/apiutil"
 	"github.com/gin-gonic/gin"
 )
+
+type Score struct {
+}
 
 // ScoreService ...
 type ScoreService struct {

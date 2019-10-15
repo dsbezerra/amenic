@@ -1,15 +1,40 @@
+/** DEPRECATED */
+
 package v1
 
 import (
 	"strings"
+	"time"
 
 	"github.com/dsbezerra/amenic/src/lib/messagequeue"
 	"github.com/dsbezerra/amenic/src/lib/middlewares/rest"
 	"github.com/dsbezerra/amenic/src/lib/persistence"
 	"github.com/dsbezerra/amenic/src/lib/persistence/models"
 	"github.com/dsbezerra/amenic/src/lib/util/apiutil"
+	"github.com/dsbezerra/amenic/src/lib/util/scheduleutil"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+type Movie struct {
+	ID            primitive.ObjectID `json:"_id"`
+	ImdbID        string             `json:"imdb_id,omitempty"`
+	Title         string             `json:"title,omitempty"`
+	OriginalTitle string             `json:"original_title,omitempty"`
+	PosterURL     string             `json:"poster_url,omitempty"`
+	BackdropURL   string             `json:"backdrop_url,omitempty"`
+	Synopsis      string             `json:"synopsis,omitempty"`
+	Trailer       string             `json:"trailer_id,omitempty"`
+	Cast          []string           `json:"cast,omitempty"`
+	Genres        []string           `json:"genres,omitempty"`
+	Rating        int                `json:"rating,omitempty"`
+	Runtime       int                `json:"runtime,omitempty"`
+	Distributor   string             `json:"distributor,omitempty"`
+	ReleaseDate   *time.Time         `json:"release_date,omitempty"`
+	Showtimes     []Showtime         `json:"showtimes,omitempty"`
+	Scores        []models.Score     `json:"scores,omitempty"`
+}
 
 // MovieService ...
 type MovieService struct {
@@ -22,86 +47,83 @@ func (r *RESTService) ServeMovies(rg *gin.RouterGroup) {
 	s := &MovieService{r.data, r.emitter}
 
 	client := rg.Group("/movies", rest.ClientAuth(r.data))
-	client.GET("/movie/:id", s.Get)
-	client.GET("/movie/:id/showtimes", s.GetSessions)
-	client.GET("/movie/:id/sessions", s.GetSessions)
-	client.GET("/now_playing", s.GetNowPlaying)
-	client.GET("/upcoming", s.GetUpcoming)
-
-	admin := rg.Group("/movies", rest.AdminAuth(r.data))
-	admin.GET("", s.GetAll)
-	admin.GET("/count", s.Count)
-	admin.PUT("/movie/:id", s.Update)
-	admin.DELETE("/movie/:id", s.Delete)
-}
-
-// GetNowPlaying gets all now playing movies
-func (s *MovieService) GetNowPlaying(c *gin.Context) {
-	// NOTE: We use SessionQuery because in order to retrieve now playing movies
-	// we need to perform an agreggation on Sessions collection
-	movies, err := s.data.GetNowPlayingMovies(BuildSessionQuery(s.data, c))
-	apiutil.SendSuccessOrError(c, movies, err)
-}
-
-// GetUpcoming gets all upcoming movies
-func (s *MovieService) GetUpcoming(c *gin.Context) {
-	query := c.MustGet("query_options").(map[string]string)
-	movies, err := s.data.GetUpcomingMovies(s.data.BuildMovieQuery(query))
-	apiutil.SendSuccessOrError(c, movies, err)
+	client.GET("/:id", s.Get)
+	client.GET("/:id/showtimes", s.GetSessions)
 }
 
 // Get gets the movie corresponding the requested ID.
 func (s *MovieService) Get(c *gin.Context) {
-	movie, err := s.data.GetMovie(c.Param("id"), BuildMovieQuery(s.data, c))
-	apiutil.SendSuccessOrError(c, movie, err)
-}
+	movie, err := s.data.GetMovie(c.Param("id"), s.data.DefaultQuery())
+	if movie == nil {
+		apiutil.SendNotFound(c)
+		return
+	}
 
-// GetAll gets all movies.
-func (s *MovieService) GetAll(c *gin.Context) {
-	movies, err := s.data.GetMovies(BuildMovieQuery(s.data, c))
-	apiutil.SendSuccessOrError(c, movies, err)
+	scores, _ := s.data.GetScores(s.data.DefaultQuery().AddCondition("movieId", movie.ID))
+	movie.Scores = scores
+
+	query := s.data.DefaultQuery()
+
+	period := scheduleutil.GetWeekPeriod(nil)
+	period.End = period.End.AddDate(0, 0, 1)
+	query.AddCondition("startTime", bson.M{"$gte": period.Start}).
+		AddCondition("movieId", movie.ID).
+		AddCondition("startTime", bson.M{"$lt": period.End}).
+		AddInclude("theater", "movie").
+		SetLimit(-1)
+
+	// If we are not sorting let's set the default sort
+	query.SetSort("+movieSlug", "+version", "+format", "+startTime")
+
+	sessions, _ := s.data.GetSessions(query)
+	movie.Sessions = sessions
+
+	apiutil.SendSuccessOrError(c, mapToMovie(movie), err)
 }
 
 // GetSessions gets all showtimes for a given movie
 func (s *MovieService) GetSessions(c *gin.Context) {
-	query := BuildSessionQuery(s.data, c).
-		AddCondition("movieId", c.Param("id"))
-	if cinema := c.Query("cinema"); cinema != "" {
-		query.AddCondition("cinemaId", cinema)
-	}
-	showtimes, err := s.data.GetSessions(query)
-	apiutil.SendSuccessOrError(c, showtimes, err)
-}
-
-// Count returns the total count of Movie matching the given query
-func (s *MovieService) Count(c *gin.Context) {
-	count, err := s.data.CountMovies(BuildMovieQuery(s.data, c))
-	apiutil.SendSuccessOrError(c, count, err)
-}
-
-// Update apply to movie with the given ID the given body data
-func (s *MovieService) Update(c *gin.Context) {
-	movie := models.Movie{}
-	err := c.ShouldBindJSON(&movie)
-	if err != nil {
+	query := BuildSessionQuery(s.data, c)
+	if ID, err := primitive.ObjectIDFromHex(c.Param("id")); err != nil {
 		apiutil.SendBadRequest(c)
 		return
+	} else {
+		query.AddCondition("movieId", ID).
+			AddInclude("theater", "movie")
 	}
-	_, err = s.data.UpdateMovie(c.Param("id"), movie)
-	apiutil.SendSuccessOrError(c, movie, err)
-}
-
-// Delete the movie with the given ID
-func (s *MovieService) Delete(c *gin.Context) {
-	err := s.data.DeleteMovie(c.Param("id"))
-	// TODO: Emit movie deleted event if successful
-	apiutil.SendSuccessOrError(c, 1, err)
+	sessions, err := s.data.GetSessions(query)
+	apiutil.SendSuccessOrError(c, mapSessionsTo(sessions), err)
 }
 
 // BuildMovieQuery builds movie query from request query string
 func BuildMovieQuery(data persistence.DataAccessLayer, c *gin.Context) persistence.Query {
 	query := c.MustGet("query_options").(map[string]string)
 	return data.BuildMovieQuery(query)
+}
+
+func mapToMovie(movie *models.Movie) *Movie {
+	if movie == nil {
+		return nil
+	}
+
+	return &Movie{
+		ID:            movie.ID,
+		ImdbID:        movie.ImdbID,
+		PosterURL:     movie.PosterURL,
+		BackdropURL:   movie.BackdropURL,
+		Title:         movie.Title,
+		OriginalTitle: movie.OriginalTitle,
+		Synopsis:      movie.Synopsis,
+		Trailer:       movie.Trailer,
+		Cast:          movie.Cast,
+		Genres:        movie.Genres,
+		Rating:        movie.Rating,
+		Runtime:       movie.Runtime,
+		Distributor:   movie.Distributor,
+		ReleaseDate:   movie.ReleaseDate,
+		Scores:        movie.Scores,
+		Showtimes:     mapSessionsTo(movie.Sessions),
+	}
 }
 
 // NOTE: isolate to another file

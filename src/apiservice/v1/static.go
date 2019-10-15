@@ -1,3 +1,5 @@
+/** DEPRECATED */
+
 package v1
 
 import (
@@ -9,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dsbezerra/amenic/src/lib/env"
@@ -222,7 +225,7 @@ func createStaticNowPlaying(data persistence.DataAccessLayer) (*StaticFile, erro
 
 	opts := &mongolayer.QueryOptions{
 		Includes: []mongolayer.QueryInclude{
-			mongolayer.QueryInclude{Field: "cinemas"},
+			mongolayer.QueryInclude{Field: "theaters"},
 		},
 	}
 	movies, err := data.OldGetNowPlayingMovies(opts)
@@ -241,68 +244,61 @@ func createStaticNowPlaying(data persistence.DataAccessLayer) (*StaticFile, erro
 			continue
 		}
 
-		static := StaticMovie{
-			Title:       movie.Title,
-			Poster:      applyAutoFormatForCloudinaryImage(movie.PosterURL),
-			ReleaseDate: movie.ReleaseDate,
-			SessionType: SessionTypeNormal,
-			MovieURL:    "/m/" + movie.ID.Hex(),
-		}
-
 		size := len(movie.Theaters)
 
-		// theatres := ""
-		// for i, cinema := range movie.Theaters {
-		// 	theatres += cinema.ShortName
-		// 	if i < size-1 {
-		// 		theatres += " - "
-		// 	}
-		// }
-		// static.Theatres = &theatres
+		var theatres strings.Builder
+		for i, cinema := range movie.Theaters {
+			// NOTE(diego): Back-compat thing.
+			// V1 API only supports IBICINEMAS and Cinemais Montes Claros.
+			lower := strings.ToLower(cinema.Name)
+			if strings.Contains(lower, "ibicinemas") || strings.Contains(lower, "cinemais montes claros") {
+				theatres.WriteString(cinema.ShortName)
+				if i < size-1 {
+					theatres.WriteString(" - ")
+				}
+			}
 
-		switch size {
-		case 1:
-			static.Theatres = &movie.Theaters[0].ShortName
-			break
-		case 2:
-			s := fmt.Sprintf("%s - %s", movie.Theaters[0].ShortName, movie.Theaters[1].ShortName)
-			static.Theatres = &s
-			break
-		default:
 		}
+		tt := theatres.String()
 
 		// NOTE(diego):
 		// This code depends on movie release date to work correctly.
 		// So... we need a crawler to keep these release dates updated for upcoming movies.
 		//
 		// 6 september 2018
+		sessionType := SessionTypeNormal
 		if customSessionType && movie.ReleaseDate != nil {
 			maxDate := movie.ReleaseDate.AddDate(0, 0, 7)
 
 			for _, session := range movie.Sessions {
 				if session.StartTime.Before(*movie.ReleaseDate) && now.Before(*movie.ReleaseDate) {
-					static.SessionType = SessionTypePreview
+					sessionType = SessionTypePreview
 					break
 				} else {
-					// If session is exactly in the premiere week let's set this as
-					// premiere
+					// If session is exactly in the premiere week let's set this as premiere.
 					if now.After(*movie.ReleaseDate) && now.Before(maxDate) {
-						static.SessionType = SessionTypePremiere
-						// NOTE(diego): Not breaking because sessions may be in any order.
+						sessionType = SessionTypePremiere
+						// NOTE(diego): Not breaking here because sessions may be in any order.
 					}
 				}
 			}
 		}
 
-		sm = append(sm, static)
+		sm = append(sm, StaticMovie{
+			Title:       movie.Title,
+			Poster:      applyAutoFormatForCloudinaryImage(movie.PosterURL),
+			ReleaseDate: movie.ReleaseDate,
+			SessionType: sessionType,
+			Theatres:    &tt,
+			MovieURL:    "/m/" + movie.ID.Hex(),
+		})
 	}
 
 	result.Movies = sm
 
 	checkForStaticFolders()
 
-	// NOTE: Temporary added only for back compatibility
-	// Remove once our users are no longer in version <= 1.0.22
+	// NOTE: Back-compat thing.
 	r, err := produceStaticFile("/movies/now_playing.json", result)
 	if err != nil {
 		return nil, err

@@ -42,6 +42,6 @@ type Movie struct {
 	UpdatedAt     *time.Time         `json:"updatedAt,omitempty" bson:"updatedAt,omitempty"`
 	Theaters      []Theater          `json:"cinemas,omitempty" bson:"theaters,omitempty"`
 	Scores        []Score            `json:"scores,omitempty" bson:"scores,omitempty"`
-	Sessions      []Session          `json:"showtimes,omitempty" bson:"sessions,omitempty"`
+	Sessions      []Session          `json:"sessions,omitempty" bson:"sessions,omitempty"`
 	LockFlags     uint64             `json:"-" bson:"lockFlags,omitempty"`
 }

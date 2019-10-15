@@ -48,20 +48,17 @@ func BasicAuth(data persistence.DataAccessLayer, minUserType string) gin.Handler
 		apiKey := c.Query("api_key")
 		if apiKey == "" {
 			apiutil.SendUnauthorized(c)
-			c.Abort()
 			return
 		}
 
 		result, err := getAPIKey(data, apiKey)
 		if err != nil {
 			apiutil.SendUnauthorized(c)
-			c.Abort()
 			return
 		}
 
 		if result.UserTypeLevel() < models.UserTypeLevel(minUserType) {
 			apiutil.SendUnauthorized(c)
-			c.Abort()
 			return
 		}
 

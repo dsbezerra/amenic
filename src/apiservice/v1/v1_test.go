@@ -1,3 +1,5 @@
+/** DEPRECATED */
+
 package v1
 
 import (

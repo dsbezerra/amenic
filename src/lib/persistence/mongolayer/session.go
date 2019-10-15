@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // InsertSession ...
@@ -51,14 +52,19 @@ func (m *MongoDAL) GetSessions(query persistence.Query) ([]models.Session, error
 	var ctx = context.Background()
 	var cursor *mongo.Cursor
 	var err error
+
+	var C = m.C(CollectionSessions)
 	if query.HasInclude() {
-		cursor, err = m.C(CollectionSessions).Aggregate(ctx, buildPipeline(CollectionSessions, query.(*QueryOptions)))
+		opts := options.Aggregate()
+		cursor, err = C.Aggregate(ctx, buildPipeline(CollectionSessions, query.(*QueryOptions)), opts)
 	} else {
-		cursor, err = m.C(CollectionSessions).Find(ctx, query.GetConditions(), getFindOptions(query))
+		cursor, err = C.Find(ctx, query.GetConditions(), getFindOptions(query))
 	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	defer cursor.Close(ctx)
 	cursor.All(ctx, &result)
 	return result, err
@@ -87,8 +93,8 @@ func (m *MongoDAL) DeleteSessions(query persistence.Query) (int64, error) {
 func (m *MongoDAL) BuildSessionQuery(q map[string]string) persistence.Query {
 	query := BuildQuery("", q)
 	if len(q) > 0 {
-		theater, ok := q["theaterId"]
-		if ok {
+
+		if theater, ok := q["theaterId"]; ok {
 			value, err := primitive.ObjectIDFromHex(theater)
 			if err == nil {
 				query.AddCondition("theaterId", value)
@@ -96,13 +102,14 @@ func (m *MongoDAL) BuildSessionQuery(q map[string]string) persistence.Query {
 			}
 		}
 
-		movie, ok := q["movieId"]
-		if ok {
+		if movie, ok := q["movieId"]; ok {
 			value, err := primitive.ObjectIDFromHex(movie)
 			if err == nil {
 				query.AddCondition("movieId", value)
 			}
 		}
+
 	}
+
 	return query
 }

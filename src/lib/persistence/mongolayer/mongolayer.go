@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	CollectionAdmins        = "admins"
 	CollectionAPIKeys       = "api_keys"
 	CollectionCities        = "cities"
 	CollectionImages        = "images"

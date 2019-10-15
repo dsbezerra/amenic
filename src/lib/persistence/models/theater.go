@@ -19,7 +19,7 @@ type Theater struct {
 	UpdatedAt  *time.Time         `json:"updatedAt,omitempty" bson:"updatedAt"`
 	City       *City              `json:"city,omitempty" bson:"city,omitempty"`
 	Prices     []Price            `json:"prices,omitempty" bson:"prices,omitempty"`
-	Sessions   []Session          `json:"showtimes,omitempty" bson:"sessions,omitempty"`
+	Sessions   []Session          `json:"sessions,omitempty" bson:"sessions,omitempty"`
 }
 
 // TheaterImages ...

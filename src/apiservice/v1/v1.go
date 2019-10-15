@@ -1,3 +1,5 @@
+/** DEPRECATED */
+
 package v1
 
 import (
@@ -25,6 +27,6 @@ func AddRoutes(r *gin.Engine, data persistence.DataAccessLayer, emitter messageq
 	s.ServeNotifications(v1)
 	s.ServePrices(v1)
 	s.ServeScores(v1)
-	s.ServeSessions(v1)
+	s.ServeShowtimes(v1)
 	s.ServeTheaters(v1)
 }

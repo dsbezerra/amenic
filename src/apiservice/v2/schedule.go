@@ -55,8 +55,8 @@ type Session struct {
 func (r *RESTService) ServeSchedules(rg *gin.RouterGroup) {
 	s := &ScheduleService{r.data, r.emitter}
 
-	client := rg.Group("/schedules", rest.ClientAuth(r.data))
-	client.GET("", s.GetAll)
+	schedules := rg.Group("/schedules", rest.JWTAuth(nil))
+	schedules.GET("", s.GetAll)
 }
 
 // GetAll ...

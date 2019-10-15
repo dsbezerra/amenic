@@ -7,6 +7,7 @@ import (
 
 	"github.com/dsbezerra/amenic/src/lib/util/scheduleutil"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -24,6 +25,8 @@ type LookupInfo struct {
 	// Used in pipeline
 	cond []bson.D
 	sort bson.D
+
+	unwind bool
 }
 
 func buildPipeline(collectionName string, opts *QueryOptions) mongo.Pipeline {
@@ -39,6 +42,10 @@ func buildPipeline(collectionName string, opts *QueryOptions) mongo.Pipeline {
 				and = append(and, bson.D{
 					{Key: f, Value: v.(bson.D)},
 				})
+			case primitive.M:
+				casted := v.(primitive.M)
+				bd := bson.D{{Key: f, Value: casted}}
+				and = append(and, bd)
 			default:
 				and = append(and, bson.D{
 					{Key: f, Value: bson.D{
@@ -147,7 +154,7 @@ func getCollection(s string) (*Collection, error) {
 		name = CollectionScores
 		collt = Scores
 
-	case "sessions", "session":
+	case "sessions", "session", "showtimes", "showtime":
 		name = CollectionSessions
 		collt = Sessions
 
@@ -210,7 +217,7 @@ func buildLookup(src string, include QueryInclude) []bson.D {
 		lookupPipeline = append(lookupPipeline, bson.D{{Key: "$project", Value: project}})
 	}
 
-	return []bson.D{
+	result := []bson.D{
 		bson.D{{
 			Key: "$lookup",
 			Value: bson.D{
@@ -222,10 +229,13 @@ func buildLookup(src string, include QueryInclude) []bson.D {
 				{Key: "pipeline", Value: lookupPipeline},
 			},
 		}},
-		bson.D{{Key: "$unwind", Value: bson.D{
-			{Key: "path", Value: fmt.Sprintf("$%s", lookup.as)},
-		}}},
 	}
+	if lookup.unwind {
+		result = append(result, bson.D{{Key: "$unwind", Value: bson.D{
+			{Key: "path", Value: fmt.Sprintf("$%s", lookup.as)},
+		}}})
+	}
+	return result
 }
 
 func calculateLookupInfo(collection string, include QueryInclude) (*LookupInfo, error) {
@@ -247,6 +257,7 @@ func calculateLookupInfo(collection string, include QueryInclude) (*LookupInfo, 
 		from:           from.Name,
 		cond:           make([]bson.D, 0),
 		sort:           bson.D{},
+		unwind:         false,
 	}
 
 	fType := from.Type
@@ -258,13 +269,8 @@ func calculateLookupInfo(collection string, include QueryInclude) (*LookupInfo, 
 		period := scheduleutil.GetWeekPeriod(nil)
 		result.cond = append(result.cond, bson.D{
 			{
-				Key: "$gte", Value: []bson.D{
-					bson.D{
-						{
-							Key: "$startTime", Value: period.Start,
-						},
-					},
-				},
+				Key:   "$gte",
+				Value: []interface{}{"$startTime", period.Start},
 			},
 		})
 		result.sort = bson.D{
@@ -301,6 +307,7 @@ func calculateLookupInfo(collection string, include QueryInclude) (*LookupInfo, 
 			result.foreignField = "_id"
 			result.localField = "cityId"
 			result.as = "city"
+			result.unwind = true
 		}
 
 	case Movies:
@@ -308,6 +315,7 @@ func calculateLookupInfo(collection string, include QueryInclude) (*LookupInfo, 
 			result.foreignField = "movieId"
 			result.localField = "_id"
 			result.as = "scores"
+			result.unwind = true
 		} else if fType == Sessions {
 			result.foreignField = "movieId"
 			result.localField = "_id"
@@ -319,6 +327,7 @@ func calculateLookupInfo(collection string, include QueryInclude) (*LookupInfo, 
 			result.localField = "movieId"
 			result.foreignField = "_id"
 			result.as = "movie"
+			result.unwind = true
 		}
 
 	case Sessions:
@@ -326,10 +335,12 @@ func calculateLookupInfo(collection string, include QueryInclude) (*LookupInfo, 
 			result.localField = "theaterId"
 			result.foreignField = "_id"
 			result.as = "theater"
+			result.unwind = true
 		} else if fType == Movies {
 			result.localField = "movieId"
 			result.foreignField = "_id"
 			result.as = "movie"
+			result.unwind = true
 		}
 
 	case Prices:
@@ -337,6 +348,7 @@ func calculateLookupInfo(collection string, include QueryInclude) (*LookupInfo, 
 			result.localField = "theaterId"
 			result.foreignField = "_id"
 			result.as = "theater"
+			result.unwind = true
 		}
 
 	case Cities:

@@ -57,6 +57,18 @@
 			"revisionTime": "2017-11-08T13:53:13Z"
 		},
 		{
+			"checksumSHA1": "0cytTxS0qPVjtknc7OrfuNmxvBE=",
+			"path": "github.com/dgrijalva/jwt-go",
+			"revision": "5e25c22bd5d6de03265bbe5462dcd162f85046f6",
+			"revisionTime": "2019-06-20T18:01:02Z"
+		},
+		{
+			"checksumSHA1": "a/3TYNUV2NoU0EfUmJfd5+r/CLk=",
+			"path": "github.com/dgrijalva/jwt-go/request",
+			"revision": "5e25c22bd5d6de03265bbe5462dcd162f85046f6",
+			"revisionTime": "2019-06-20T18:01:02Z"
+		},
+		{
 			"checksumSHA1": "tCLZtXpweFRf6w7Ic3ild/uMBKE=",
 			"path": "github.com/dsbezerra/cinemais",
 			"revision": "769a8d10016c310b4fd0761a4de21b095b6929d7",
@@ -101,6 +113,12 @@
 			"path": "github.com/gin-contrib/static",
 			"revision": "c1cdf9c9ec7b10ddff982ab3814ae4dd778e36a4",
 			"revisionTime": "2019-05-11T12:47:41Z"
+		},
+		{
+			"checksumSHA1": "GSXMVrLCjVoP30vPDfh14/F+eRU=",
+			"path": "github.com/gin-gonic/contrib/jwt",
+			"revision": "35076c1b2beaf5f26634fe6468bce6707c3d880a",
+			"revisionTime": "2019-09-23T05:42:18Z"
 		},
 		{
 			"checksumSHA1": "L5dpS6+DOrMp5MVo9pm0hdXlYW0=",
@@ -507,6 +525,18 @@
 			"path": "go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage",
 			"revision": "74cffef35f2e287eb38713f394013b5fb82ccff1",
 			"revisionTime": "2019-08-07T14:53:57Z"
+		},
+		{
+			"checksumSHA1": "oCH3J96RWvO8W4xjix47PModpio=",
+			"path": "golang.org/x/crypto/bcrypt",
+			"revision": "87dc89f01550277dc22b74ffcf4cd89fa2f40f4c",
+			"revisionTime": "2019-10-11T18:31:21Z"
+		},
+		{
+			"checksumSHA1": "q+XI9g44wd9mYvf3S5Wo8YZjAus=",
+			"path": "golang.org/x/crypto/blowfish",
+			"revision": "87dc89f01550277dc22b74ffcf4cd89fa2f40f4c",
+			"revisionTime": "2019-10-11T18:31:21Z"
 		},
 		{
 			"checksumSHA1": "1MGpGDQqnUoRpv7VEcQrXOBydXE=",

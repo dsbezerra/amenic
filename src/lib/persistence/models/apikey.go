@@ -21,6 +21,7 @@ type APIKey struct {
 	Key       string             `json:"key,omitempty" bson:"key"`             // Actual key.
 	Name      string             `json:"name,omitempty" bson:"name"`           // Name used to identify key.
 	UserType  string             `json:"user_type,omitempty" bson:"user_type"` // Which user type is this key such as admin, client or whatever else we need (which we will not).
+	Platform  string             `json:"platform,omitempty" bson:"platform"`   // Which platform is using this key
 	Owner     string             `json:"owner,omitempty" bson:"owner"`         // Whoever created this key, probably the username.
 	Timestamp *time.Time         `json:"iat,omitempty" bson:"iat"`             // The time when the key was created.
 }

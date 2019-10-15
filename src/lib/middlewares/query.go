@@ -45,7 +45,6 @@ func ValidObjectIDHex() gin.HandlerFunc {
 			_, err := primitive.ObjectIDFromHex(ID)
 			if err != nil {
 				apiutil.SendBadRequest(c)
-				c.Abort()
 				return
 			}
 		}
