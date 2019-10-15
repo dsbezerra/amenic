@@ -1,10 +1,10 @@
 package v2
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/dsbezerra/amenic/src/lib/middlewares"
 	"github.com/dsbezerra/amenic/src/lib/middlewares/rest"
 	"github.com/dsbezerra/amenic/src/lib/persistence/models"
 	"github.com/stretchr/testify/assert"
@@ -13,8 +13,9 @@ import (
 
 func TestNotification(t *testing.T) {
 	data := NewMockDataAccessLayer()
+
 	r := NewMockRouter(data)
-	r.Use(rest.Init())
+	r.Use(rest.Init(), middlewares.ValidObjectIDHex(), middlewares.BaseParseQuery())
 
 	testNotification := models.Notification{
 		ID:    primitive.NewObjectID(),
@@ -27,13 +28,53 @@ func TestNotification(t *testing.T) {
 	s := RESTService{data: data}
 	s.ServeNotifications(&r.RouterGroup)
 
+	HexID := testNotification.ID.Hex()
+
+	clientAuthToken := getClientAuthToken(t)
+	adminAuthToken := getAdminAuthToken(t)
+
 	testCases := []apiTestCase{
-		newAPITestCase("Get all notifications", "GET", "/notifications", "", http.StatusUnauthorized, false, nil),
-		newAPITestCase("Get single notification with ID 1", "GET", "/notifications/notification/1", "", http.StatusBadRequest, true, nil),
-		newAPITestCase("Get single notification with ID 5c353e8cebd54428b4f25447", "GET", "/notifications/notification/5c353e8cebd54428b4f25447", "", http.StatusNotFound, true, nil),
-		newAPITestCase(
-			fmt.Sprintf("Get single notification with ID %s", testNotification.ID.Hex()),
-			"GET", fmt.Sprintf("/notifications/%s", testNotification.ID.Hex()), "", http.StatusOK, true, nil),
+		apiTestCase{
+			name:   "It should return Unauthorized",
+			method: "GET",
+			url:    "/notifications/notification/5c353e8cebd54428b4f25447",
+			status: http.StatusUnauthorized,
+		},
+		apiTestCase{
+			name:      "It should return BadRequest since ID is not a valid ObjectId",
+			method:    "GET",
+			url:       "/notifications/notification/invalid-notification-id",
+			status:    http.StatusBadRequest,
+			authToken: clientAuthToken,
+		},
+		apiTestCase{
+			name:      "It should return NotFound since Notification with ID 5c353e8cebd54428b4f25447 doesn't exist",
+			method:    "GET",
+			url:       "/notifications/notification/5c353e8cebd54428b4f25447",
+			status:    http.StatusNotFound,
+			authToken: clientAuthToken,
+		},
+		apiTestCase{
+			name:      "It should return a Notification with ID " + HexID,
+			method:    "GET",
+			url:       "/notifications/notification/" + HexID,
+			status:    http.StatusOK,
+			authToken: clientAuthToken,
+		},
+		apiTestCase{
+			name:      "It should return Unauthorized because endpoint can be accessed only by admins",
+			method:    "GET",
+			url:       "/notifications",
+			status:    http.StatusUnauthorized,
+			authToken: clientAuthToken,
+		},
+		apiTestCase{
+			name:      "It should return OK because the token is a valid admin token",
+			method:    "GET",
+			url:       "/notifications",
+			status:    http.StatusOK,
+			authToken: adminAuthToken,
+		},
 	}
 	r.RunTests(t, testCases)
 

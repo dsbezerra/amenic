@@ -29,34 +29,50 @@ func TestMovie(t *testing.T) {
 
 	HexID := testMovie.ID.Hex()
 
+	clientAuthToken := getClientAuthToken(t)
+	adminAuthToken := getAdminAuthToken(t)
+
 	cases := []apiTestCase{
 		apiTestCase{
-			name:         "It should return Unauthorized",
-			method:       "GET",
-			url:          "/movies",
-			status:       http.StatusUnauthorized,
-			appendAPIKey: false,
+			name:   "It should return Unauthorized",
+			method: "GET",
+			url:    "/movies",
+			status: http.StatusUnauthorized,
 		},
 		apiTestCase{
-			name:         "It should return BadRequest since ID is not a valid ObjectId",
-			method:       "GET",
-			url:          "/movies/movie/invalid-movie-id",
-			status:       http.StatusBadRequest,
-			appendAPIKey: true,
+			name:      "It should return BadRequest since ID is not a valid ObjectId",
+			method:    "GET",
+			url:       "/movies/movie/invalid-movie-id",
+			status:    http.StatusBadRequest,
+			authToken: clientAuthToken,
 		},
 		apiTestCase{
-			name:         "It should return NotFound since Movie with ID 5c353e8cebd54428b4f25447 doesn't exist",
-			method:       "GET",
-			url:          "/movies/movie/5c353e8cebd54428b4f25447",
-			status:       http.StatusNotFound,
-			appendAPIKey: true,
+			name:      "It should return NotFound since Movie with ID 5c353e8cebd54428b4f25447 doesn't exist",
+			method:    "GET",
+			url:       "/movies/movie/5c353e8cebd54428b4f25447",
+			status:    http.StatusNotFound,
+			authToken: clientAuthToken,
 		},
 		apiTestCase{
-			name:         "It should return a Movie with ID " + HexID,
-			method:       "GET",
-			url:          "/movies/movie/" + HexID,
-			status:       http.StatusOK,
-			appendAPIKey: true,
+			name:      "It should return a Movie with ID " + HexID,
+			method:    "GET",
+			url:       "/movies/movie/" + HexID,
+			status:    http.StatusOK,
+			authToken: clientAuthToken,
+		},
+		apiTestCase{
+			name:      "It should return Unauthorized because endpoint can be accessed only by admins",
+			method:    "GET",
+			url:       "/movies/count",
+			status:    http.StatusUnauthorized,
+			authToken: clientAuthToken,
+		},
+		apiTestCase{
+			name:      "It should return OK because the token is a valid admin token",
+			method:    "GET",
+			url:       "/movies/count",
+			status:    http.StatusOK,
+			authToken: adminAuthToken,
 		},
 	}
 

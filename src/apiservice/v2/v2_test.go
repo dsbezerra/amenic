@@ -6,16 +6,13 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/dsbezerra/amenic/src/lib/persistence"
-	"github.com/dsbezerra/amenic/src/lib/persistence/models"
 	"github.com/dsbezerra/amenic/src/lib/persistence/mongolayer"
 	"github.com/dsbezerra/amenic/src/lib/util/apiutil"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -23,13 +20,13 @@ const (
 )
 
 type apiTestCase struct {
-	name         string
-	method       string
-	url          string
-	body         string
-	status       int
-	appendAPIKey bool
-	onResponse   func(r *httptest.ResponseRecorder)
+	name       string
+	method     string
+	url        string
+	body       string
+	authToken  string
+	status     int
+	onResponse func(r *httptest.ResponseRecorder)
 }
 
 type mockRouter struct {
@@ -37,36 +34,20 @@ type mockRouter struct {
 	data persistence.DataAccessLayer
 }
 
-func (r *mockRouter) Call(method, URL, body string) *httptest.ResponseRecorder {
+func (r *mockRouter) Call(method, URL, body, authToken string) *httptest.ResponseRecorder {
 	req, _ := http.NewRequest(method, URL, bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	if authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+authToken)
+	}
 	res := httptest.NewRecorder()
 	r.ServeHTTP(res, req)
 	return res
 }
 
 func (r *mockRouter) RunTests(t *testing.T, tests []apiTestCase) {
-	// Make sure we have a api-key for authenticated requests...
-	apikey := models.APIKey{
-		ID:       primitive.NewObjectID(),
-		Key:      "test-api-key",
-		UserType: "admin",
-		Owner:    "test",
-	}
-
-	r.data.InsertAPIKey(apikey)
-	defer r.data.DeleteAPIKey(apikey.ID.Hex())
-
 	for _, test := range tests {
-		if test.appendAPIKey {
-			if strings.Index(test.url, "?") > -1 {
-				test.url += "&"
-			} else {
-				test.url += "?"
-			}
-			test.url += "api_key=" + apikey.Key
-		}
-		res := r.Call(test.method, test.url, test.body)
+		res := r.Call(test.method, test.url, test.body, test.authToken)
 		assert.Equal(t, test.status, res.Code, test.name)
 		if res != nil && test.onResponse != nil {
 			test.onResponse(res)
@@ -74,14 +55,14 @@ func (r *mockRouter) RunTests(t *testing.T, tests []apiTestCase) {
 	}
 }
 
-func newAPITestCase(name, method, url, body string, status int, appendAPIKey bool, onResponse func(*httptest.ResponseRecorder)) apiTestCase {
+func newAPITestCase(name, method, url, body string, status int, authToken string, onResponse func(*httptest.ResponseRecorder)) apiTestCase {
 	return apiTestCase{
 		name,
 		method,
 		url,
 		body,
+		authToken,
 		status,
-		appendAPIKey,
 		onResponse,
 	}
 }

@@ -20,12 +20,12 @@ func (r *RESTService) ServeTheaters(rg *gin.RouterGroup) {
 	s := &TheaterService{r.data, r.emitter}
 
 	client := rg.Group("/theaters", rest.JWTAuth(nil))
-	client.GET("", s.GetAll)
 	client.GET("/theater/:id", s.Get)
 	client.GET("/theater/:id/prices", s.GetPrices)
 	client.GET("/theater/:id/sessions", s.GetSessions)
 
 	admin := rg.Group("/theaters", rest.JWTAuth(&rest.Endpoint{AdminOnly: true}))
+	admin.GET("", s.GetAll)
 	admin.GET("/count", s.Count)
 	admin.PUT("/theater/:id", s.Update)
 	admin.DELETE("/theater/:id", s.Delete)

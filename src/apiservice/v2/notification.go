@@ -41,5 +41,6 @@ func (s *NotificationService) GetAll(c *gin.Context) {
 
 // ParseQuery builds the conditional Mongo query
 func (s *NotificationService) ParseQuery(c *gin.Context) persistence.Query {
-	return c.MustGet("query_options").(persistence.Query)
+	// TODO: Create BuildNotificationQuery
+	return s.data.DefaultQuery()
 }

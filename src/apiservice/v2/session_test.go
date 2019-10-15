@@ -26,43 +26,45 @@ func TestSession(t *testing.T) {
 	s := RESTService{data: data}
 	s.ServeSessions(&r.RouterGroup)
 
+	clientAuthToken := getClientAuthToken(t)
+	adminAuthToken := getAdminAuthToken(t)
+
 	HexID := testSession.ID.Hex()
 
 	cases := []apiTestCase{
 		apiTestCase{
-			name:         "It should return Unauthorized",
-			method:       "GET",
-			url:          "/sessions",
-			status:       http.StatusUnauthorized,
-			appendAPIKey: false,
+			name:   "It should return Unauthorized",
+			method: "GET",
+			url:    "/sessions",
+			status: http.StatusUnauthorized,
 		},
 		apiTestCase{
-			name:         "It should return BadRequest since ID is not a valid ObjectId",
-			method:       "GET",
-			url:          "/sessions/session/invalid-session-id",
-			status:       http.StatusBadRequest,
-			appendAPIKey: true,
+			name:      "It should return BadRequest since ID is not a valid ObjectId",
+			method:    "GET",
+			url:       "/sessions/session/invalid-session-id",
+			status:    http.StatusBadRequest,
+			authToken: clientAuthToken,
 		},
 		apiTestCase{
-			name:         "It should return NotFound since Session with ID 5c353e8cebd54428b4f25447 doesn't exist",
-			method:       "GET",
-			url:          "/sessions/session/5c353e8cebd54428b4f25447",
-			status:       http.StatusNotFound,
-			appendAPIKey: true,
+			name:      "It should return NotFound since Session with ID 5c353e8cebd54428b4f25447 doesn't exist",
+			method:    "GET",
+			url:       "/sessions/session/5c353e8cebd54428b4f25447",
+			status:    http.StatusNotFound,
+			authToken: clientAuthToken,
 		},
 		apiTestCase{
-			name:         "It should return a Session with ID " + HexID,
-			method:       "GET",
-			url:          "/sessions/session/" + HexID,
-			status:       http.StatusOK,
-			appendAPIKey: true,
+			name:      "It should return a Session with ID " + HexID,
+			method:    "GET",
+			url:       "/sessions/session/" + HexID,
+			status:    http.StatusOK,
+			authToken: clientAuthToken,
 		},
 		apiTestCase{
-			name:         "It should return a list of Session models",
-			method:       "GET",
-			url:          "/sessions",
-			status:       http.StatusOK,
-			appendAPIKey: true,
+			name:      "It should return a list of Session models",
+			method:    "GET",
+			url:       "/sessions",
+			status:    http.StatusOK,
+			authToken: adminAuthToken,
 		},
 	}
 

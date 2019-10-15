@@ -13,6 +13,7 @@ import (
 
 func TestTheater(t *testing.T) {
 	data := NewMockDataAccessLayer()
+
 	r := NewMockRouter(data)
 	r.Use(rest.Init(), middlewares.ValidObjectIDHex(), middlewares.BaseParseQuery())
 
@@ -29,34 +30,44 @@ func TestTheater(t *testing.T) {
 	assert.NoError(t, err)
 
 	HexID := testTheater.ID.Hex()
+
+	clientAuthToken := getClientAuthToken(t)
+	adminAuthToken := getAdminAuthToken(t)
+
 	cases := []apiTestCase{
 		apiTestCase{
-			name:         "It should return Unauthorized",
-			method:       "GET",
-			url:          "/theaters",
-			status:       http.StatusUnauthorized,
-			appendAPIKey: false,
+			name:   "It should return Unauthorized",
+			method: "GET",
+			url:    "/theaters",
+			status: http.StatusUnauthorized,
 		},
 		apiTestCase{
-			name:         "It should return BadRequest since ID is not a valid ObjectId",
-			method:       "GET",
-			url:          "/theaters/theater/invalid-theater-id",
-			status:       http.StatusBadRequest,
-			appendAPIKey: true,
+			name:      "It should return BadRequest since ID is not a valid ObjectId",
+			method:    "GET",
+			url:       "/theaters/theater/invalid-theater-id",
+			status:    http.StatusBadRequest,
+			authToken: clientAuthToken,
 		},
 		apiTestCase{
-			name:         "It should return a Theater with ID " + HexID,
-			method:       "GET",
-			url:          "/theaters/theater/%s" + HexID,
-			status:       http.StatusOK,
-			appendAPIKey: true,
+			name:      "It should return a Theater with ID " + HexID,
+			method:    "GET",
+			url:       "/theaters/theater/" + HexID,
+			status:    http.StatusOK,
+			authToken: clientAuthToken,
 		},
 		apiTestCase{
-			name:         "It should return all prices of Theater with ID " + HexID,
-			method:       "GET",
-			url:          "/theaters/theater/%s/prices" + HexID,
-			status:       http.StatusOK,
-			appendAPIKey: true,
+			name:      "It should return all prices of Theater with ID " + HexID,
+			method:    "GET",
+			url:       "/theaters/theater/" + HexID + "/prices",
+			status:    http.StatusOK,
+			authToken: clientAuthToken,
+		},
+		apiTestCase{
+			name:      "It should return OK because the token is a valid admin token",
+			method:    "GET",
+			url:       "/theaters/count",
+			status:    http.StatusOK,
+			authToken: adminAuthToken,
 		},
 	}
 

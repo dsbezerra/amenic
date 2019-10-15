@@ -16,13 +16,21 @@ func TestSchedule(t *testing.T) {
 	s := RESTService{data: data}
 	s.ServeSchedules(&r.RouterGroup)
 
+	clientAuthToken := getClientAuthToken(t)
+
 	cases := []apiTestCase{
 		apiTestCase{
-			name:         "It should return schedules",
-			method:       "GET",
-			url:          "/schedules?date=2019-08-22&theaterId=5d4e00db1b3e2d231434d147",
-			status:       http.StatusOK,
-			appendAPIKey: true,
+			name:   "It should return Unauthorized",
+			method: "GET",
+			url:    "/schedules?date=2019-08-22&theaterId=5d4e00db1b3e2d231434d147",
+			status: http.StatusUnauthorized,
+		},
+		apiTestCase{
+			name:      "It should return schedules",
+			method:    "GET",
+			url:       "/schedules?date=2019-08-22&theaterId=5d4e00db1b3e2d231434d147",
+			status:    http.StatusOK,
+			authToken: clientAuthToken,
 		},
 	}
 

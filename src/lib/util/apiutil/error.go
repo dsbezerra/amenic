@@ -40,7 +40,7 @@ func HandleError(c *gin.Context, err error) {
 	case jwt_lib.ErrNoTokenInRequest:
 		res.Status = http.StatusUnauthorized
 		res.Error = apiErrorUnauthorized
-	case ErrInvalidCredentials, bcrypt.ErrMismatchedHashAndPassword:
+	case ErrInvalidCredentials, bcrypt.ErrMismatchedHashAndPassword, bcrypt.ErrHashTooShort:
 		res.Status = http.StatusUnauthorized
 		res.Error = apiErrorInvalidCredentials
 	default:
