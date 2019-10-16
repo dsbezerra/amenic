@@ -97,8 +97,35 @@ func (m *MongoDAL) BuildSessionQuery(q map[string]string) persistence.Query {
 		if theater, ok := q["theaterId"]; ok {
 			value, err := primitive.ObjectIDFromHex(theater)
 			if err == nil {
-				query.AddCondition("theaterId", value)
-				query.SetLimit(-1)
+				query.AddCondition("theaterId", value).SetLimit(-1)
+			}
+		} else if theaterIds, ok := q["theaterIds"]; ok {
+			size := len(theaterIds)
+			if size > 0 {
+				// NOTE(diego):
+				// Response is limitted to 10 theaters.
+				// This is not supposed to behave as a feed in social media.
+				values := []primitive.ObjectID{}
+				var start int
+				for index, c := range theaterIds {
+					var end int
+					if c == ',' {
+						end = index
+					} else if index == size-1 {
+						end = index + 1
+					}
+					if end != 0 {
+						value, err := primitive.ObjectIDFromHex(theaterIds[start:end])
+						if err == nil {
+							values = append(values, value)
+						}
+						start = end + 1 // Skip comma.
+					}
+				}
+
+				if len(values) > 0 {
+					query.AddCondition("theaterId", primitive.M{"$in": values}).SetLimit(-1)
+				}
 			}
 		}
 

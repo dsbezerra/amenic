@@ -26,7 +26,7 @@ func (r *RESTService) ServeStates(rg *gin.RouterGroup) {
 	s := &StateService{r.data, r.emitter}
 
 	states := rg.Group("/states", rest.JWTAuth(&rest.Endpoint{AdminOnly: true}))
-	states.GET("/", s.GetAll)
+	states.GET("", s.GetAll)
 	states.GET("/state/:id", s.Get)
 	states.GET("/state/:id/cities", s.GetCities)
 	// TODO: Get theaters

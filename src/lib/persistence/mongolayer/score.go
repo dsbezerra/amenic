@@ -80,3 +80,17 @@ func (m *MongoDAL) DeleteScores(query persistence.Query) (int64, error) {
 	}
 	return result.DeletedCount, err
 }
+
+// BuildScoreQuery ...
+func (m *MongoDAL) BuildScoreQuery(q map[string]string) persistence.Query {
+	query := BuildQuery("", q)
+	if len(q) > 0 {
+		if movie, ok := q["movieId"]; ok {
+			value, err := primitive.ObjectIDFromHex(movie)
+			if err == nil {
+				query.AddCondition("movieId", value)
+			}
+		}
+	}
+	return query
+}

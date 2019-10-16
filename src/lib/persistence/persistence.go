@@ -13,7 +13,9 @@ type DataAccessLayer interface {
 
 	BuildCityQuery(q map[string]string) Query
 	BuildMovieQuery(q map[string]string) Query
+	BuildNotificationQuery(q map[string]string) Query
 	BuildPriceQuery(q map[string]string) Query
+	BuildScoreQuery(q map[string]string) Query
 	BuildSessionQuery(q map[string]string) Query
 	BuildTheaterQuery(q map[string]string) Query
 	BuildScraperQuery(q map[string]string) Query

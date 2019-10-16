@@ -66,3 +66,12 @@ func (m *MongoDAL) DeleteNotifications(query persistence.Query) (int64, error) {
 	}
 	return result.DeletedCount, err
 }
+
+// BuildNotificationQuery ...
+func (m *MongoDAL) BuildNotificationQuery(q map[string]string) persistence.Query {
+	query := BuildQuery("", q)
+	if len(q) > 0 {
+
+	}
+	return query
+}

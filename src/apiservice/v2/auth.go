@@ -71,7 +71,7 @@ func (r *AuthService) Login(c *gin.Context) {
 
 	claims := rest.NewClaims(apikey, []string{"api_read", "api_write"})
 	if claims == nil {
-		apiutil.SendInternalServerError(c)
+		apiutil.SendUnauthorized(c)
 		return
 	}
 
@@ -91,14 +91,13 @@ func (r *AuthService) RequestToken(c *gin.Context) {
 		AddCondition("platform", retrievePlatform(c)).
 		AddCondition("user_type", "client"))
 	if apikey == nil || err != nil {
-		// TODO: Add custom error to indicate that no api key is available for this platform and client
-		apiutil.SendInternalServerError(c)
+		apiutil.SendUnauthorized(c)
 		return
 	}
 
 	claims := rest.NewClaims(apikey, []string{"api_read"})
 	if claims == nil {
-		apiutil.SendInternalServerError(c)
+		apiutil.SendUnauthorized(c)
 		return
 	}
 

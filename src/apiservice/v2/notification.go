@@ -29,18 +29,18 @@ func (r *RESTService) ServeNotifications(rg *gin.RouterGroup) {
 
 // Get gets the notification corresponding the requested ID.
 func (s *NotificationService) Get(c *gin.Context) {
-	notification, err := s.data.GetNotification(c.Param("id"), s.ParseQuery(c))
+	notification, err := s.data.GetNotification(c.Param("id"), BuildNotificationQuery(s.data, c))
 	apiutil.SendSuccessOrError(c, notification, err)
 }
 
 // GetAll gets all notifications.
 func (s *NotificationService) GetAll(c *gin.Context) {
-	notifications, err := s.data.GetNotifications(s.ParseQuery(c))
+	notifications, err := s.data.GetNotifications(BuildNotificationQuery(s.data, c))
 	apiutil.SendSuccessOrError(c, notifications, err)
 }
 
-// ParseQuery builds the conditional Mongo query
-func (s *NotificationService) ParseQuery(c *gin.Context) persistence.Query {
-	// TODO: Create BuildNotificationQuery
-	return s.data.DefaultQuery()
+// BuildNotificationQuery builds notification persistence.Query from request query string
+func BuildNotificationQuery(data persistence.DataAccessLayer, c *gin.Context) persistence.Query {
+	query := c.MustGet("query_options").(map[string]string)
+	return data.BuildNotificationQuery(query)
 }
